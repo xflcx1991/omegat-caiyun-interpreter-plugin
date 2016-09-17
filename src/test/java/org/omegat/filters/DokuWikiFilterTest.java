@@ -34,11 +34,13 @@ import org.junit.Test;
 import org.omegat.core.data.IProject;
 import org.omegat.filters2.text.dokuwiki.DokuWikiFilter;
 
+import static org.junit.Assert.*;
+
 public class DokuWikiFilterTest extends TestFilterBase {
 
     @Test
     public void testTextFilterParsing() throws Exception {
-        List<String> entries = parse(new DokuWikiFilter(), "test/data/filters/dokuwiki/dokuwiki.txt");
+        List<String> entries = parse(new DokuWikiFilter(), "/filters/dokuwiki/dokuwiki.txt");
         int i = 0;
         assertEquals("Header", entries.get(i++));
         assertEquals("This is a flow text.", entries.get(i++));
@@ -59,20 +61,20 @@ public class DokuWikiFilterTest extends TestFilterBase {
 
     @Test
     public void testTranslate() throws Exception {
-        translateText(new DokuWikiFilter(), "test/data/filters/dokuwiki/dokuwiki-translate.txt");
+        translateText(new DokuWikiFilter(), "/filters/dokuwiki/dokuwiki-translate.txt");
     }
 
     @Test
     public void testIsFileSupported() {
         DokuWikiFilter filter = new DokuWikiFilter();
-        assertTrue(filter.isFileSupported(new File("test/data/filters/dokuwiki/dokuwiki.txt"),
+        assertTrue(filter.isFileSupported(new File(this.getClass().getResource("/filters/dokuwiki/dokuwiki.txt").getFile()),
                 new TreeMap<String, String>(), context));
-        assertFalse(filter.isFileSupported(new File("test/data/filters/text/text1.txt"),
+        assertFalse(filter.isFileSupported(new File(this.getClass().getResource("/filters/text/text1.txt").getFile()),
                 new TreeMap<String, String>(), context));
     }
 
     public void testLoad() throws Exception {
-        String f = "test/data/filters/dokuwiki/dokuwiki.txt";
+        String f = "/filters/dokuwiki/dokuwiki.txt";
         IProject.FileInfo fi = loadSourceFiles(new DokuWikiFilter(), f);
 
         checkMultiStart(fi, f);

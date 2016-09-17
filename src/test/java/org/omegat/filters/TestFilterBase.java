@@ -25,9 +25,14 @@
 
 package org.omegat.filters;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -42,9 +47,7 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathFactory;
 
-import org.apache.commons.io.FileUtils;
 import org.omegat.core.Core;
-import org.omegat.core.TestCore;
 import org.omegat.core.data.EntryKey;
 import org.omegat.core.data.IProject;
 import org.omegat.core.data.ProjectProperties;
@@ -65,77 +68,54 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.xml.sax.InputSource;
 
+import org.apache.commons.io.FileUtils;
+
+import static org.custommonkey.xmlunit.XMLAssert.assertXMLEqual;
+import static org.junit.Assert.*;
+
+
 /**
  * Base class for test filter parsing.
  * 
  * @author Alex Buloichik <alex73mail@gmail.com>
+ * @author Hiroshi Miura
  */
-public abstract class TestFilterBase extends TestCore {
+abstract class TestFilterBase {
+
     protected FilterContext context = new FilterContext(new Language("en"), new Language("be"), false)
             .setTargetTokenizerClass(DefaultTokenizer.class);
 
     protected File outFile;
 
     protected void setUp() throws Exception {
-        super.setUp();
-
         Core.initializeConsole(Collections.emptyMap());
         Core.setFilterMaster(new FilterMaster(FilterMaster.createDefaultFiltersConfig()));
         Core.setProject(new TestProject(new ProjectPropertiesTest()));
-
-        outFile = new File("build/testdata/OmegaT_test-" + getClass().getName() + "-" + getName());
-        outFile.getParentFile().mkdirs();
     }
 
-    protected List<String> parse(AbstractFilter filter, String filename) throws Exception {
-        final List<String> result = new ArrayList<String>();
-
-        filter.parseFile(new File(filename), Collections.emptyMap(), context, new IParseCallback() {
-            public void addEntry(String id, String source, String translation, boolean isFuzzy,
-                    String comment, IFilter filter) {
-                addEntry(id, source, translation, isFuzzy, comment, null, filter, null);
-            }
-
-            public void addEntry(String id, String source, String translation, boolean isFuzzy, String comment,
-                    String path, IFilter filter, List<ProtectedPart> protectedParts) {
-                String[] props = comment == null ? null : new String[] { "comment", comment };
-                addEntryWithProperties(id, source, translation, isFuzzy, props, path, filter, protectedParts);
-            }
-
-            public void addEntryWithProperties(String id, String source, String translation,
-                    boolean isFuzzy, String[] props, String path,
-                    IFilter filter, List<ProtectedPart> protectedParts) {
-                if (!source.isEmpty()) {
-                    result.add(source);
-                }
-            }
-
-            public void linkPrevNextSegments() {
-            }
-        });
-
-        return result;
+    protected List<String> parse(IFilter filter, String resource) throws Exception {
+        return parse(filter, resource, Collections.emptyMap());
     }
 
-    protected List<String> parse(AbstractFilter filter, String filename, Map<String, String> options)
+    protected List<String> parse(IFilter filter, String resource, Map<String, String> options)
             throws Exception {
-        final List<String> result = new ArrayList<String>();
+        final List<String> result = new ArrayList<>();
 
-        filter.parseFile(new File(filename), options, context, new IParseCallback() {
+        filter.parseFile(new File(this.getClass().getResource(resource).getFile()), options, context, new IParseCallback() {
             public void addEntry(String id, String source, String translation, boolean isFuzzy,
                     String comment, IFilter filter) {
                 addEntry(id, source, translation, isFuzzy, comment, null, filter, null);
             }
 
             public void addEntry(String id, String source, String translation, boolean isFuzzy, String comment,
-                    String path, IFilter filter, List<ProtectedPart> protectedParts) {
+                                 String path, IFilter filter, List<ProtectedPart> protectedParts) {
                 String[] props = comment == null ? null : new String[] { "comment", comment };
                 addEntryWithProperties(id, source, translation, isFuzzy, props, path, filter, protectedParts);
             }
 
             public void addEntryWithProperties(String id, String source, String translation,
-                    boolean isFuzzy, String[] props, String path,
-                    IFilter filter, List<ProtectedPart> protectedParts) {
+                                               boolean isFuzzy, String[] props, String path,
+                                               IFilter filter, List<ProtectedPart> protectedParts) {
                 if (!source.isEmpty()) {
                     result.add(source);
                 }
@@ -149,24 +129,24 @@ public abstract class TestFilterBase extends TestCore {
     }
 
     protected void parse2(final AbstractFilter filter, final String filename,
-            final Map<String, String> result, final Map<String, String> legacyTMX) throws Exception {
+                          final Map<String, String> result, final Map<String, String> legacyTMX) throws Exception {
 
         filter.parseFile(new File(filename), Collections.emptyMap(), context, new IParseCallback() {
             public void addEntry(String id, String source, String translation, boolean isFuzzy,
-                    String comment, IFilter filter) {
+                                 String comment, IFilter filter) {
                 addEntry(id, source, translation, isFuzzy, comment, null, filter, null);
             }
 
             public void addEntry(String id, String source, String translation, boolean isFuzzy, String comment,
-                    String path, IFilter filter, List<ProtectedPart> protectedParts) {
+                                 String path, IFilter filter, List<ProtectedPart> protectedParts) {
                 String[] props = comment == null ? null : new String[] { "comment", comment };
                 addEntryWithProperties(id, source, translation, isFuzzy, props, path, filter, protectedParts);
             }
 
             @Override
             public void addEntryWithProperties(String id, String source, String translation,
-                    boolean isFuzzy, String[] props, String path,
-                    IFilter filter, List<ProtectedPart> protectedParts) {
+                                               boolean isFuzzy, String[] props, String path,
+                                               IFilter filter, List<ProtectedPart> protectedParts) {
                 String segTranslation = isFuzzy ? null : translation;
                 result.put(source, segTranslation);
                 if (translation != null) {
@@ -191,19 +171,19 @@ public abstract class TestFilterBase extends TestCore {
 
         filter.parseFile(new File(filename), options, context, new IParseCallback() {
             public void addEntry(String id, String source, String translation, boolean isFuzzy,
-                    String comment, IFilter filter) {
+                                 String comment, IFilter filter) {
                 addEntry(id, source, translation, isFuzzy, comment, null, filter, null);
             }
             public void addEntry(String id, String source, String translation, boolean isFuzzy,
-                    String comment, String path, IFilter filter, List<ProtectedPart> protectedParts) {
+                                 String comment, String path, IFilter filter, List<ProtectedPart> protectedParts) {
                 String[] props = comment == null ? null : new String[] { "comment", comment };
                 addEntryWithProperties(id, source, translation, isFuzzy, props, path, filter, protectedParts);
             }
 
             @Override
             public void addEntryWithProperties(String id, String source, String translation,
-                    boolean isFuzzy, String[] props, String path,
-                    IFilter filter, List<ProtectedPart> protectedParts) {
+                                               boolean isFuzzy, String[] props, String path,
+                                               IFilter filter, List<ProtectedPart> protectedParts) {
                 if (source.isEmpty()) {
                     return;
                 }
@@ -224,12 +204,14 @@ public abstract class TestFilterBase extends TestCore {
         return result;
     }
 
-    protected void translate(AbstractFilter filter, String filename) throws Exception {
-        translate(filter, filename, Collections.emptyMap());
+    protected void translate(IFilter filter, String resource) throws Exception {
+        translate(filter, resource, Collections.emptyMap());
     }
     
-    protected void translate(AbstractFilter filter, String filename, Map<String, String> config) throws Exception {
-        filter.translateFile(new File(filename), outFile, config, context,
+    protected void translate(IFilter filter, String resource, Map<String, String> config) throws Exception {
+        outFile = File.createTempFile("output", ".txt");
+        outFile.deleteOnExit();
+        filter.translateFile(new File(this.getClass().getResource(resource).getFile()), outFile, config, context,
                 new ITranslateCallback() {
                     public String getTranslation(String id, String source, String path) {
                         return source;
@@ -248,17 +230,25 @@ public abstract class TestFilterBase extends TestCore {
     }
 
     protected void align(IFilter filter, String in, String out, IAlignCallback callback) throws Exception {
-        File inFile = new File("test/data/filters/" + in);
-        File outFile = new File("test/data/filters/" + out);
+        File inFile = new File("/data/filters/" + in);
+        File outFile = new File("/data/filters/" + out);
         filter.alignFile(inFile, outFile, Collections.emptyMap(), context, callback);
     }
 
-    protected void translateText(AbstractFilter filter, String filename) throws Exception {
-        translateText(filter, filename, Collections.emptyMap());
+    protected void testTranslate(final IFilter filter, final String testcase) throws Exception {
+        translateText(filter, "/" + testcase + ".txt");
     }
-    protected void translateText(AbstractFilter filter, String filename, Map<String, String> config) throws Exception {
-        translate(filter, filename, config);
-        compareBinary(new File(filename), outFile);
+
+    protected void translateText(IFilter filter, String resource) throws Exception {
+        translateText(filter, resource, Collections.emptyMap());
+    }
+
+    protected void translateText(IFilter filter, String resource, Map<String, String> config) throws Exception {
+        translate(filter, resource, config);
+        boolean result = FileUtils.contentEquals(new File(this.getClass().getResource(resource).getFile()), outFile);
+        if (!result) {
+          fails("Translated text, which should be as same as source one, is not equals with source.");
+        }
     }
 
     protected void translateXML(AbstractFilter filter, String filename) throws Exception {
@@ -331,10 +321,11 @@ public abstract class TestFilterBase extends TestCore {
         String path;
     }
 
-    protected IProject.FileInfo loadSourceFiles(IFilter filter, String file, Map<String, String> filterOptions)
+    protected IProject.FileInfo loadSourceFiles(IFilter filter, String resource, Map<String, String> filterOptions)
             throws Exception {
         ProjectPropertiesTest props = new ProjectPropertiesTest();
         TestProject p = new TestProject(props);
+        String file = this.getClass().getResource(resource).getFile();
         return p.loadSourceFiles(filter, file, filterOptions);
     }
 
@@ -359,7 +350,7 @@ public abstract class TestFilterBase extends TestCore {
     }
 
     protected void checkMulti(String sourceText, String id, String path, String prev, String next,
-            String comment) {
+                              String comment) {
         assertEquals(new EntryKey(fi.filePath, sourceText, id, prev, next, path), fi.entries.get(fiCount)
                 .getKey());
         assertEquals(comment, fi.entries.get(fiCount).getComment());
@@ -367,7 +358,7 @@ public abstract class TestFilterBase extends TestCore {
     }
 
     protected void checkMultiProps(String sourceText, String id, String path, String prev, String next,
-            String... props) {
+                                   String... props) {
         assertEquals(new EntryKey(fi.filePath, sourceText, id, prev, next, path),
                 fi.entries.get(fiCount).getKey());
         List<String> expected = Arrays.asList(props);
@@ -456,7 +447,7 @@ public abstract class TestFilterBase extends TestCore {
         assertEquals(path, en.path);
         alCount++;
     }
-    
+
     protected void checkAlignById(String id, String source, String translation, String path) {
         for(AlignedEntry en:al) {
             if (id.equals(en.id)) {
@@ -474,7 +465,7 @@ public abstract class TestFilterBase extends TestCore {
         public List<AlignedEntry> entries = new ArrayList<AlignedEntry>();
 
         public void addTranslation(String id, String source, String translation, boolean isFuzzy,
-                String path, IFilter filter) {
+                                   String path, IFilter filter) {
             AlignedEntry en = new AlignedEntry();
             en.id = id;
             en.source = source;
@@ -490,4 +481,24 @@ public abstract class TestFilterBase extends TestCore {
         public String translation;
         public String path;
     }
+
+    /**
+     * Create BufferedReader from specified file and encoding.
+     *
+     * @param inFile file to read.
+     * @param inEncoding file encoding.
+     * @return BufferReader object.
+     * @throws IOException when file I/O error happened.
+     */
+    protected static BufferedReader getBufferedReader(final File inFile, final String inEncoding)
+            throws IOException {
+        InputStreamReader isr;
+        if (inEncoding == null) {
+            isr = new InputStreamReader(new FileInputStream(inFile), Charset.defaultCharset());
+        } else {
+            isr = new InputStreamReader(new FileInputStream(inFile), inEncoding);
+        }
+        return new BufferedReader(isr);
+    }
+
 }

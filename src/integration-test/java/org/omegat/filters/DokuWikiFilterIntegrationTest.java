@@ -3,7 +3,8 @@
           with fuzzy matching, translation memory, keyword search, 
           glossaries, and translation leveraging into updated projects.
 
- Copyright (C) 2009 Alex Buloichik
+ Copyright (C) 2008 Alex Buloichik
+               2010 Volker Berlin
                Home page: http://www.omegat.org/
                Support center: http://groups.yahoo.com/group/OmegaT/
 
@@ -23,24 +24,14 @@
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **************************************************************************/
 
-package org.omegat.util;
+package org.omegat.filters;
 
-import java.io.IOException;
-import java.io.Writer;
+import org.omegat.filters2.text.dokuwiki.DokuWikiFilter;
+import org.testng.annotations.Test;
 
-/**
- * /dev/null writer. Used for filters where writer required by filter, but not
- * need for application.
- * 
- * @author Alex Buloichik <alex73mail@gmail.com>
- */
-public class NullWriter extends Writer {
-    public void write(char[] cbuf, int off, int len) throws IOException {
-    }
-
-    public void flush() throws IOException {
-    }
-
-    public void close() throws IOException {
+public class DokuWikiFilterIntegrationTest extends IntegrationTestFilterBase {
+    @Test
+    public void testLoad() throws Exception {
+        test(new DokuWikiFilter(), "dokuwiki");
     }
 }
