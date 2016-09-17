@@ -1,0 +1,137 @@
+apply plugin: 'java'
+apply plugin: 'jacoco'
+apply plugin: 'findbugs'
+apply plugin: 'checkstyle'
+apply plugin: 'distribution'
+apply plugin: 'idea'
+
+version = '0.1'
+
+configurations {
+    provided
+    integrationTestCompile.extendsFrom testCompile
+    integrationTestRuntime.extendsFrom testRuntime
+}
+
+sourceSets {
+    main {
+        compileClasspath += configurations.provided
+        test.compileClasspath += configurations.provided
+        test.runtimeClasspath += configurations.provided
+    }
+
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            compileClasspath += configurations.provided
+            runtimeClasspath += main.output + test.output
+            runtimeClasspath += configurations.provided
+            srcDir file('src/integration-test/java')
+        }
+        resources.srcDir file('src/integration-test/resources')
+    }
+}
+
+repositories {
+    jcenter()
+}
+
+dependencies {
+    provided 'commons-io:commons-io:2.4'
+    provided 'commons-lang:commons-lang:2.6'
+    provided project(":stub")
+    testCompile 'org.testng:testng:6.9.10'
+    testCompile 'com.alibaba:fastjson:1.2.17'
+    testCompile project(":stub")
+    integrationTestCompile 'org.testng:testng:6.9.10'
+    integrationTestCompile project(":stub")
+}
+test.useTestNG()
+
+tasks.withType(JavaCompile) {
+    options.compilerArgs << "-Xlint:deprecation" << "-Xlint:unchecked"
+}
+
+// build FatJar
+jar {
+    from files(sourceSets.main.output.classesDir)
+    from {configurations.compile.collect {zipTree(it)}} {
+        exclude "META-INF/MANIFEST.MF"
+    }
+    manifest {
+        attributes("OmegaT-Plugins": "org.omegat.")
+    }
+}
+
+checkstyle {
+    config = resources.text.fromFile("${rootProject.projectDir}/config/checkstyle/checkstyle.xml")
+    ignoreFailures = true
+    toolVersion = '7.1'
+}
+tasks.checkstyleMain.setGroup('Verification')
+
+// Force prevent checkstyle/findbugs on Test.
+task checkstyleTest(overwrite: true) << {}
+task checkstyleIntegrationTest(overwrite: true) << {}
+task findbugsTest(overwrite: true) << {}
+task findbugsIntegrationTest(overwrite: true) << {}
+
+findbugs {
+    ignoreFailures = true
+}
+tasks.withType(FindBugs) {
+    reports {
+      xml.enabled = false
+      html.enabled = true
+    }
+    setGroup('Verification')
+}
+
+task integrationTest(type: Test) {
+    description = "Integration/Acceptance Test"
+    testClassesDir = sourceSets.integrationTest.output.classesDir
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    useTestNG()
+}
+check.dependsOn integrationTest
+integrationTest.mustRunAfter test
+tasks.integrationTest.setGroup('Verification')
+
+idea {
+    module {
+        testSourceDirs += file('src/integration-test/java')
+    }
+}
+
+task sourceJar(type: Jar) {
+    from sourceSets.main.allSource
+    classifier = 'sources'
+}
+
+artifacts {
+    archives jar
+    archives sourceJar
+}
+
+distTar {
+  compression = Compression.GZIP
+}
+
+distributions {
+    main {
+        contents {
+            from('README.md', 'CHANGELOG.md', 'COPYING', 'DEVELOP.md')
+            from(sourceJar) {
+                into 'source'
+            }
+            from(jar) {
+                into 'plugin'
+            }
+        }
+    }
+}
+
+project(":stub") {
+    apply plugin: 'java'
+}
+
