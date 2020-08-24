@@ -1,70 +1,49 @@
-# OmegaT plugin development skeleton
+# OmegaT 彩云小译插件
+一个能让 OmegaT 从彩云小译获取机器翻译的插件。内置了官方测试 Key，不用配置也可用，但不保证可靠性（经常会触发使用上限），所以还是建议申请一个彩云小译的 Token。
 
-## How to get skeleton into your project
+已在 OmegaT 4.3.2 和 gradle 3.0 环境下测试通过。
 
-It is recommended to checkout a squashed history of skeleton.
+参考了以下项目的代码，把我从黑箱带入 OmegaT 插件开发，感谢各位作者。
+> https://github.com/yoyicue/omegat-tencent-plugin
+> https://github.com/omegat-org/omegat/blob/854b6b5a66a0306e5c27e74c0b5d656ed80b2bd4/src/org/omegat/core/machinetranslators/YandexTranslate.java
+> GoogleTranslateWithoutApiKey
 
-```
-$ mkdir myproject; cd myproject
-$ git init
-$ git remote add skeleton https://github.com/omegat-org/plugin-skeleton.git
-$ git fetch skeleton
-$ git checkout -b master skeleton/squashed
-$ git remote remove skeleton
-$ git remote add origin https://where.your/project/repository
-$ git push -u origin master
-```
+特别感谢 [@Ninty](https://github.com/c19354837 "Ninty") 介绍的 Gson 和 OkHttp 用来处理数据。不过后来发现只需要一个很小子集的功能，也为了减小生成 jar 包的大小，工具包改为了 Hutool。
 
+鉴于 OmegaT 插件教程太少和零散，我将在 readme 的[最下面](#introduction)讲以下入门环境搭建和参考资料。
 
-## Where you should change?
+## 使用方法
+1. 首先最好申请一个彩云小译 Token
 
-- Source code: `src/main/java/*`
-- Test code: `src/test/java/*` and `src/test/resources/*`
-- Project name in `settings.gradle`
-- Plugin Main class name in``gradle.properties`.
-- Integration test code: `src/integration-test/java/*` and `src/integration-test/resources/*`
-- Coding rules: `config/checkstyle/checkstyle.xml
-- Source file Header rule: `config/checkstyle/header.txt`
+    登录进[彩云科技开放平台](https://dashboard.caiyunapp.com/user/sign_in/)，申请开通小译 Token（每月翻译 100 万字以内是免费的），也许需要等待一到两个工作日。
+    
+2. 下载 releases 里的 zip，解压得到 jar 文件和别的插件一样放进 OmegaT 插件目录。这个目录默认应该在 OmegaT 安装目录下的`plugins`文件夹
+3. 打开 OmegaT，选项——首选项——机器翻译，选中`Caiyun Xiaoyi Translate`，点击配置，然后填入第一步得到 Token，最后勾选启用，点确定关闭首选项窗口。
+4. 没有第 4 步，做完上面 3 步，打开你的翻译项目，你应该能在机器翻译面板看到来自彩云小译的结果了。Enjoy it!
 
-## Build system
+## 自行编译
+1. 克隆本项目，进入项目根目录，然后运行`./gradlew build`。
+2. 在`build/libs/`目录下，拷贝`omegat-caiyun-interpreter-plugin-*.jar`文件到 OmegaT 的插件目录。
 
-This skeleton use a Gradle build system as same as OmegaT version 4.0.0 and later.
+## 许可证
+本项目采用[木兰宽松许可证, 第2版](https://license.coscl.org.cn/MulanPSL2/)
+本项目采用了以下第三方组件：
+* [Hutool](https://hutool.cn/) 5.4.0（木兰宽松许可证, 第2版）
 
-## Dependency
+---
 
-OmegaT and dependencies are located on remote maven repositories.
-It is nessesary to connect the internet at least first time to compile.
+<h1 id="introduction">OmegaT 插件开发起步</h1>
+官方给的资料有两处，分别是
+* https://github.com/omegat-org/omegat
 
-## Extensions from Gradle defaults
+    在`docs_devel`目录及其子目录下有两篇介绍入门的文章，分别是《OmegaT developer's guide》和《Creating an OmegaT Plugin》，格式是 odt 需要 LibreOffice 打开（当然也可以用 OpenOffice）。示例代码是 Google 翻译插件，可以看出和本项目的彩云小译的插件代码结构是相似的。
+* https://github.com/omegat-org/plugin-skeleton
 
-- Integration test support.
-- `provided` configuration for OmegaT classes and libraries that is bundled with OmegaT.
-- Static code verification with Checkstyle and FindBugs.
-- FatJar generation.
+    这个官方示例是用来提供一个快速搭建开发环境的。用了 Gradle 而不是上一处示例项目的 Ant,目录结构也有变化。现在应该用这个项目，上一处仅仅用来当资料参考。参考本项目的 readme 里的步骤，应该很快可以把一个合法的插件项目创建出来。
 
-## FatJar
+除了官方代码，应该多看看别的项目写的代码，比如上文提到过的
+> https://github.com/yoyicue/omegat-tencent-plugin
+> https://github.com/omegat-org/omegat/blob/854b6b5a66a0306e5c27e74c0b5d656ed80b2bd4/src/org/omegat/core/machinetranslators/YandexTranslate.java
+> GoogleTranslateWithoutApiKey
 
-OmegaT considered a plugin is a single jar file. If it is depend on some libraries, 
-you should ship your plugin with these libraries.
-It is why generating a FatJar, a single jar file with all runtime dependencies
-which is not provided with OmegaT.
-
-## Where is a built artifact?
-
-You can find distribution files in `build/distributions/*.zip` and `*.tgz.`
-Also you can find jar files at `build/libs/`
-
-## Test report
-
-You will find a test results report at `build/reports/` and can show it with your favorite web browser.
-
-## Installation
-
-You can get a plugin jar file from zip/tgz distribution file.
-OmegaT plugin should be placed in `$HOME/.omegat/plugin` or `C:\Program Files\OmegaT\plugin`
-depending on your operating system.
-
-## License
-
-This project is distributed under the GNU general public license version 3 or later.
-
+另外本彩云小译翻译插件代码也做了注释可以参考。
