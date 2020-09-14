@@ -6,7 +6,7 @@ GoogleTranslateWithoutApiKey
 的写法，感谢上述作者
 彩云小译 API 文档：https://fanyi.caiyunapp.com/#/api
  */
-package xyz.xffish.machinetranslators;
+package xyz.xffish.machinetranslators.caiyun;
 
 import cn.hutool.http.Header;
 import cn.hutool.http.HttpRequest;
@@ -20,13 +20,14 @@ import org.omegat.gui.exttrans.MTConfigDialog;
 import org.omegat.util.Language;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import xyz.xffish.machinetranslators.caiyun.util.OLang2YLang;
 
 //import java.awt.*;
 import java.awt.Window;
 import java.util.HashMap;
 
 public class XiaoyiTranslate extends BaseTranslate {
-	/** 设置存储 key 的名字，读取和设置值由 OmegaT 提供 API 来操作 */
+	/** 设置存储 key 的名字，读取和设置值由 OmegaT 提供 API 来操作. */
     private static final String PROPERTY_API_SECRET_KEY = "xiaoyi.api.secret.Key";
     /**
      *  这是彩云小译的官方测试 key，如果没有在设置里配置自己的 key，那就用这个，以下这是官方 key 的说明<br>
@@ -35,25 +36,28 @@ public class XiaoyiTranslate extends BaseTranslate {
      */
     protected static final String PROPERTY_API_OFFICIAL_TEST_SECRET_KEY = "3975l6lr5pcbvidl6jl2";
     /**
-     * 彩云小译请求 URL
+     * 彩云小译请求 URL.
      */
     protected static final String URL = "http://api.interpreter.caiyunai.com/v1/translator";
 
-    private static final Logger logger = LoggerFactory.getLogger(XiaoyiTranslate.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(XiaoyiTranslate.class);
 
     /**
-     * 在软件启动时会自动调用该函数来注册插件
+     * 在软件启动时会自动调用该函数来注册插件.
      */
     public static void loadPlugins() {
-        logger.debug("加载 XiaoyiTranslate Plugin");
+        LOGGER.debug("加载 XiaoyiTranslate Plugin");
         Core.registerMachineTranslationClass(XiaoyiTranslate.class);
     }
 
+    /**
+     * 卸载插件，可以留空，示例代码就留空.
+     */
     public static void unloadPlugins() {
     }
 
     /**
-     * 显示该插件介绍性的话
+     * 显示该插件介绍性的话.
      * @return 介绍性话语
      */
     @Override
@@ -62,7 +66,7 @@ public class XiaoyiTranslate extends BaseTranslate {
     }
 
     /**
-     * 在软件里显示该翻译插件的名字
+     * 在软件里显示该翻译插件的名字.
      * @return 本翻译插件显示的名字
      */
     @Override
@@ -71,7 +75,7 @@ public class XiaoyiTranslate extends BaseTranslate {
     }
 
     /**
-     * 插件主体功能函数，接收原文，获得译文并返回
+     * 插件主体功能函数，接收原文，获得译文并返回.
      * @param sLang 原文的语言
      * @param tLang 译文的语言
      * @param text 原文内容
@@ -85,26 +89,24 @@ public class XiaoyiTranslate extends BaseTranslate {
             // key 是空的那就用官方测试key
             secretKey = PROPERTY_API_OFFICIAL_TEST_SECRET_KEY;
         }
+
+
 		secretKey = "token " + secretKey;
 
-        logger.debug("secretKey = {}", secretKey);
+        LOGGER.debug("secretKey = {}", secretKey);
 
-
+        // -----------------转换语言代码-----------------
         String lvSourceLang = sLang.getLanguageCode().substring(0, 2).toLowerCase();
-        if (!lvSourceLang.equals("en")){
-            // https://fanyi.caiyunapp.com/#/api 文档指出
-            // 目前只支持 英语 en 和日文 ja 向汉语转
-            lvSourceLang = "auto";
-        }
+        lvSourceLang = OLang2YLang.translateOLang2YLang(lvSourceLang);
 
-        //String lvTargetLang = tLang.getLanguageCode().substring(0, 2).toLowerCase();
-        // 只翻译成中文
-        String lvTargetLang = "zh";
+        String lvTargetLang = tLang.getLanguageCode().substring(0, 2).toLowerCase();
+        lvTargetLang = OLang2YLang.translateOLang2YLang(lvTargetLang);
 
         // 传递给彩云小译的指示翻译方向的字符串
         String trans_type = String.format("%s2%s", lvSourceLang, lvTargetLang);
         // 打印最后拼接的翻译方向字符串
-        logger.debug("trans_type = {}", trans_type);
+        LOGGER.debug("trans_type = {}", trans_type);
+
 
         //判断翻译缓存里有没有
         // U+2026 HORIZONTAL ELLIPSIS 水平省略号 …
@@ -112,7 +114,7 @@ public class XiaoyiTranslate extends BaseTranslate {
         String prev = getFromCache(sLang, tLang, lvShortText);
         if(prev != null){
             // 啊，有缓存，那就直接返回不用请求了
-            logger.debug("啊，有缓存，太美妙了：{}", prev);
+            LOGGER.debug("啊，有缓存，太美妙了：{}", prev);
             return prev;
         }
 
@@ -134,7 +136,7 @@ public class XiaoyiTranslate extends BaseTranslate {
 //        JSONUtil.parse(bodyMap);
         String bodyStr = JSONUtil.toJsonStr(bodyMap);
 
-        logger.debug("bodyStr = {}", bodyStr);
+        LOGGER.debug("bodyStr = {}", bodyStr);
 
         
 
@@ -146,21 +148,25 @@ public class XiaoyiTranslate extends BaseTranslate {
                 .body(bodyStr);
 
         HttpResponse response = post.execute();
-        logger.debug("response status = {}", response.getStatus());
-        logger.debug("response isGzip = {}", response.isGzip());
+        LOGGER.debug("response status = {}", response.getStatus());
+        LOGGER.debug("response isGzip = {}", response.isGzip());
         String headerContentEncoding = response.header(Header.CONTENT_ENCODING);
-        logger.debug("response headerContentEncoding = {}", headerContentEncoding);
+        LOGGER.debug("response headerContentEncoding = {}", headerContentEncoding);
 
         String translation = "";
         String responseBody = response.body();
 
-        logger.debug("response body = {}", responseBody);
+        LOGGER.debug("response body = {}", responseBody);
 
         JSONObject jsonObject = JSONUtil.parseObj(responseBody);
         if(response.isOk()){
             translation = (String) jsonObject.getObj("target", "");
+            // 把这次结果添加进缓存
+            putToCache(sLang, tLang, lvShortText, translation);
         }else{
+            // 出错描述直接写在 message 里，就不用专门的类转换错误码及其描述了
             translation = (String) jsonObject.getObj("message", "");
+
         }
 
         return translation;
